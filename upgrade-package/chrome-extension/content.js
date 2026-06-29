@@ -1,4 +1,4 @@
-// 发票类型检查助手 v3.0.32
+// 发票类型检查助手 v3.0.33
 // 日期: 2026-06-29  制作人: 陆琦
 // v3.0.32 改动: 修复"取消关闭后重新打开触发识别"BUG — 引入 drawOpenTime/fileCaptureTime 时间戳确保仅当前会话上传的文件才触发，增强 Drawer 关闭检测（可见性而非 DOM 移除）
 // v3.0.31 改动: 修复"取消"关闭抽屉后重新触发 doCheck — 新增 lastCompletedFile，MutationObserver type-change 路径中若文件已完成检查且 capturedFile 已清空则跳过
@@ -1366,7 +1366,7 @@ function showFloat() {
   fw.innerHTML =
     '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">' +
       '<span id="ic-svc-light" style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#888;flex-shrink:0" title="Python服务状态检测中..."></span>' +
-      '<span style="font-weight:600;margin-right:4px">发票检查 v3.0.32</span>' +
+      '<span style="font-weight:600;margin-right:4px">发票检查 v3.0.33</span>' +
       '<span style="opacity:.7;font-size:10px">by 陆琦</span>' +
       '<span style="opacity:.7;font-size:10px;margin-left:auto">(' + (SAVED_BUYERS.length || 0) + '家)</span>' +
     '</div>' +
@@ -2596,4 +2596,4 @@ if (isInvoicePage()) {
   console.log('[发票检查] 当前页面非发票录入，等待导航触发');
 }
 
-console.log('[发票检查 v3.0.32] Content script已加载（时间戳保护防Drawer重开误触发 + lastCompletedFile防取消重触发 + isInvoiceDrawer白名单 + 发票号手工校验 + 浮窗双开关）');
+console.log('[发票检查 v3.0.33] Content script已加载（时间戳保护防Drawer重开误触发 + lastCompletedFile防取消重触发 + isInvoiceDrawer白名单 + 发票号手工校验 + 浮窗双开关）');
