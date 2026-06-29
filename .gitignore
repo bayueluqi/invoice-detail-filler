@@ -1,0 +1,39 @@
+# ====== Python ======
+__pycache__/
+*.py[cod]
+*.pyo
+*.egg-info/
+dist/
+build/
+
+# ====== 环境变量 & 密钥 ======
+.env
+.env.*
+# v3.0.33+: API Key 迁移到 .env，不提交到仓库
+
+# ====== 日志文件 ======
+*.log
+invoice-service.log
+invoice-launcher.log
+
+# ====== 二进制 & 安装包 ======
+extras/
+*.zip
+*.exe
+*.dll
+
+# ====== Office 文档 ======
+*.docx
+*.xlsx
+
+# ====== IDE & 系统 ======
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ====== 临时文件 ======
+*.tmp
+*.bak
+*.swp

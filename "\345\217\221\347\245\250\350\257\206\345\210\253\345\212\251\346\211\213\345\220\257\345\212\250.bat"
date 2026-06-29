@@ -1,0 +1,148 @@
+@echo off
+setlocal enabledelayedexpansion
+
+REM ============================================================
+REM  Invoice Checker Launcher v3.0.10
+REM  ???????pythonw.exe ?????????????????????
+REM  ????????????????? / start_hidden.vbs?????????????
+REM  ?????bat ??????? ?? invoice-launcher.log
+REM        Python ??????? ?? python-service\invoice-service.log
+REM ============================================================
+
+set "BASE_DIR=%~dp0"
+set "BAT_LOG=%BASE_DIR%invoice-launcher.log"
+if exist "%BASE_DIR%python-service\invoice_checker.py" (
+    set "SERVICE_DIR=%BASE_DIR%python-service"
+) else if exist "%BASE_DIR%service\invoice_checker.py" (
+    set "SERVICE_DIR=%BASE_DIR%service"
+) else (
+    echo ===== %DATE% %TIME% ===== >> "%BAT_LOG%"
+    echo [ERROR] Service directory not found! >> "%BAT_LOG%"
+    exit /b 1
+)
+
+REM ----- ??????????? -----
+echo ===== %DATE% %TIME% ===== >> "%BAT_LOG%"
+echo [LAUNCH] bat???, BASE_DIR=%BASE_DIR% >> "%BAT_LOG%"
+
+REM ----- ???? Python?????? pythonw.exe ?????????-----
+set "PYTHON="
+set "PYTHON_MODE="
+
+if exist "%SERVICE_DIR%\python\pythonw.exe" (
+    set "PYTHON=%SERVICE_DIR%\python\pythonw.exe"
+    set "PYTHON_MODE=pythonw(bundled)"
+    goto :found
+)
+REM WorkBuddy managed Python (3.13.12)
+if exist "%USERPROFILE%\.workbuddy\binaries\python\versions\3.13.12\pythonw.exe" (
+    set "PYTHON=%USERPROFILE%\.workbuddy\binaries\python\versions\3.13.12\pythonw.exe"
+    set "PYTHON_MODE=pythonw(managed)"
+    goto :found
+)
+if exist "%USERPROFILE%\.workbuddy\binaries\python\versions\3.13.12\python.exe" (
+    set "PYTHON=%USERPROFILE%\.workbuddy\binaries\python\versions\3.13.12\python.exe"
+    set "PYTHON_MODE=python(managed)"
+    goto :found
+)
+REM C:\Program Files\Python3x (common install location)
+for %%v in (314 313 312 311 310 39) do (
+    if exist "C:\Program Files\Python%%v\pythonw.exe" (
+        set "PYTHON=C:\Program Files\Python%%v\pythonw.exe"
+        set "PYTHON_MODE=pythonw(C:\Program Files\Python%%v)"
+        goto :found
+    )
+    if exist "C:\Program Files\Python%%v\python.exe" (
+        set "PYTHON=C:\Program Files\Python%%v\python.exe"
+        set "PYTHON_MODE=python(C:\Program Files\Python%%v)"
+        goto :found
+    )
+)
+REM C:\Python3x (legacy install location)
+for %%v in (314 313 312 311 310 39) do (
+    if exist "C:\Python%%v\pythonw.exe" (
+        set "PYTHON=C:\Python%%v\pythonw.exe"
+        set "PYTHON_MODE=pythonw(C:\Python%%v)"
+        goto :found
+    )
+    if exist "C:\Python%%v\python.exe" (
+        set "PYTHON=C:\Python%%v\python.exe"
+        set "PYTHON_MODE=python(C:\Python%%v)"
+        goto :found
+    )
+)
+where pythonw >nul 2>&1
+if !errorlevel!==0 (
+    for /f "delims=" %%p in ('where pythonw 2^>nul') do set "PYTHON=%%p"
+    set "PYTHON_MODE=pythonw(PATH)"
+    goto :found
+)
+where python >nul 2>&1
+if !errorlevel!==0 (
+    for /f "delims=" %%p in ('where python 2^>nul') do set "PYTHON=%%p"
+    set "PYTHON_MODE=python(PATH)"
+    goto :found
+)
+
+echo [ERROR] %DATE% %TIME% Python not found! >> "%BAT_LOG%"
+exit /b 1
+
+:found
+echo [LAUNCH] Python: %PYTHON% (%PYTHON_MODE%) >> "%BAT_LOG%"
+
+REM ----- ??????? 52100 ???????? -----
+echo [LAUNCH] ????? 52100 ?????... >> "%BAT_LOG%"
+set "KILL_COUNT=0"
+for /f "tokens=5" %%a in ('netstat -ano 2^>nul ^| findstr ":52100 "') do (
+    set "PID=%%a"
+    REM ??? PID 0????????
+    if not "!PID!"=="0" (
+        echo [LAUNCH]   ??????? PID=!PID! >> "%BAT_LOG%"
+        taskkill /f /pid !PID! >nul 2>&1
+        if !errorlevel!==0 (
+            set /a KILL_COUNT+=1
+        ) else (
+            echo [LAUNCH]   taskkill PID=!PID! ??? >> "%BAT_LOG%"
+        )
+    )
+)
+if !KILL_COUNT! gtr 0 (
+    echo [LAUNCH] ?????? !KILL_COUNT! ???????, ??? 2 ??... >> "%BAT_LOG%"
+    timeout /t 2 /nobreak >nul 2>&1
+) else (
+    echo [LAUNCH] ??? 52100 ?????? >> "%BAT_LOG%"
+)
+
+REM ----- ??? Python ???? -----
+echo [LAUNCH] ???????????... >> "%BAT_LOG%"
+cd /d "%SERVICE_DIR%"
+
+REM pythonw.exe: ?????????????????????? stdout/stderr ???? Python ???????????
+REM start /b: ???????????????? pythonw.exe ?????????
+start "" /b "%PYTHON%" invoice_checker.py
+echo [LAUNCH] ????????????, exitCode=!errorlevel! >> "%BAT_LOG%"
+
+REM ----- ?????????? -----
+timeout /t 2 /nobreak >nul 2>&1
+
+REM ????????????? 10 ??
+set "HEALTH_OK=0"
+for /l %%i in (1,1,5) do (
+    powershell -NoProfile -Command "try { $r=Invoke-WebRequest 'http://127.0.0.1:52100/health' -TimeoutSec 2 -UseBasicParsing; if($r.StatusCode -eq 200){exit 0}} catch {exit 1}" >nul 2>&1
+    if !errorlevel!==0 (
+        set "HEALTH_OK=1"
+        echo [LAUNCH] ???????! (??%%i?????) >> "%BAT_LOG%"
+        goto :health_ok
+    )
+    timeout /t 2 /nobreak >nul 2>&1
+)
+
+echo [LAUNCH] ??????????????(???????5?????????) >> "%BAT_LOG%"
+goto :end
+
+:health_ok
+echo [LAUNCH] ??????: http://127.0.0.1:52100 >> "%BAT_LOG%"
+echo [LAUNCH] ???????: %SERVICE_DIR%\invoice-service.log >> "%BAT_LOG%"
+
+:end
+echo [LAUNCH] done >> "%BAT_LOG%"
