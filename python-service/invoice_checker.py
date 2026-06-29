@@ -1,21 +1,14 @@
 """
 ==========================================
-版本：v3.0.13（2026-06-29）
-相对 v3.0.12 改动：
-  1) AI PROMPT 强化发票号位置约束：必须紧邻"发票号码"标签右侧 + 只在图片上半部分
-  2) AI PROMPT 新增排除规则：下半部分数字（保单号等）绝不是发票号，"保单"字样附近数字必须忽略
-  3) PDF 文本回退正则加固：标签未找到时，8/20位数字匹配仅限文档前 30% 区域
-相对 v3.0.12（保留历史）：
-  4) 修复金额提取将机器编号(12位)误当金额的严重bug（数电票PDF文本布局分散导致）
-  5) 策略0/1/2窗口扩大：300/200/100 → 2000/200/200（适应数电票文本散乱）
-  6) 新增策略1.5：从"价税合计"搜索到文档末尾找"(小写)¥"
-  7) 策略3加固：要求金额必须有小数点(.XX格式)+长度≤10位
-  8) 策略4加固：要求小数点+长度≤12位+排除机器编号区域数字
-  9) 新增机器编号区域预处理：自动识别并排除"机器编号"后的长数字
-相对 v3.0.10 改动：
-  10) PDF文本提取多策略容错：fitz标准→fitz(dict)→fitz(rawdict)→pypdf
-  11) 发票号启发式修正：AI返回19位时在连续0区域自动补0到20位
-  12) 重试prompt强化：告诉AI差几位+连续0是最容易出错的地方
+版本：v3.0.14（2026-06-29）
+相对 v3.0.13 改动：
+  1) ★ 修复"文本优先"逻辑反杀：AI与PDF文本都返回有效长度但数字不同时，优先信AI（AI视觉能区分发票号/保单号位置）
+     旧逻辑无条件用PDF覆盖AI → 当PDF同时存在发票号+保单号两个20位数字时，文本提取可能抓保单号覆盖AI正确结果
+     新逻辑：两者都有效且不同→信AI；仅AI无效时→信PDF
+相对 v3.0.13（保留历史）：
+  2) AI PROMPT 强化发票号位置约束（紧邻标签+上半部分+排除保单）
+  3) PDF 文本回退正则限定前30%+排除保单区域
+  4) 其他修复（金额提取、机器编号排除等）
 制作人：陆琦
 ==========================================
 """
@@ -36,7 +29,7 @@ API_URL = "https://open.bigmodel.cn/api/paas/v4/chat/completions"
 MODEL = "glm-4v-flash"
 PORT = 52100
 # v2.5.12-fix: 版本号统一为常量，避免升级时各接口版本号漏改不一致
-VERSION = "3.0.13"
+VERSION = "3.0.14"
 
 # ========== 日志系统：文件日志为主，控制台日志为辅（pythonw.exe 无控制台，全靠文件日志） ==========
 LOG_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -566,10 +559,37 @@ def check_ai(fdata, fname):
             except Exception as e2:
                 log.error(f"重试调用失败: {e2}")
 
+        # v3.0.14: 智能决策 — AI vs PDF文本，谁更可信？
+        # 原则：AI视觉能看到数字旁边的标签（"发票号码" vs "保单号"），
+        #       PDF文本提取只能做正则匹配，分不清发票号还是保单号。
+        # 策略：两者都返回有效长度但数字不同 → 信AI（视觉有位置信息）
+        #       AI长度无效但PDF有效 → 信PDF（AI少数0/多数0，文本更准）
+        ai_valid = number and len(number) in (8, 20)
+        pdf_valid = text_extracted_no and len(text_extracted_no) in (8, 20)
+        
         if text_extracted_no:
-            if number != text_extracted_no:
-                log.info(f"文本优先: AI={number} → 文本={text_extracted_no}")
-            number = text_extracted_no
+            if not number:
+                # AI没返回，直接用PDF
+                number = text_extracted_no
+                log.info(f"文本保底: AI无结果，使用文本={text_extracted_no}")
+            elif number != text_extracted_no:
+                if ai_valid and pdf_valid:
+                    # 两者都有效但数字不同 → AI视觉有位置信息，优先信AI
+                    log.warning(f"AI vs 文本不一致! AI={number}({len(number)}位✓) 文本={text_extracted_no}({len(text_extracted_no)}位)")
+                    log.warning(f"→ 优先信AI（AI能看到数字旁边的标签，能区分发票号/保单号）")
+                    # 保持 number 不变（用AI结果）
+                elif pdf_valid and not ai_valid:
+                    # AI长度无效，PDF有效 → 信PDF（AI少数0了）
+                    log.info(f"AI长度异常({len(number)}位)但文本有效({len(text_extracted_no)}位) → 文本优先: {text_extracted_no}")
+                    number = text_extracted_no
+                elif ai_valid and not pdf_valid:
+                    # AI有效，PDF无效 → 信AI
+                    log.info(f"文本长度异常({len(text_extracted_no)}位)但AI有效({len(number)}位) → 保持AI: {number}")
+                else:
+                    # 两者都无效 → 信PDF（至少是人类打印的数字）
+                    log.warning(f"两者长度均异常 AI={number}({len(number)}位) 文本={text_extracted_no}({len(text_extracted_no)}位) → 暂用文本: {text_extracted_no}")
+                    number = text_extracted_no
+            # else: 两者相同，无需处理
         elif not text_extracted_no and number:
             # v3.0.11: AI结果长度异常时，尝试启发式修正
             if len(number) not in (8, 20):
