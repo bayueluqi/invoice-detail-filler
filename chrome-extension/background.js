@@ -1,4 +1,4 @@
-// 发票检查助手 v3.0.34 - background
+// 发票检查助手 v3.0.35 - background
 // 日期: 2026-06-29  制作人: 陆琦
 // 负责：弹系统通知 + SPA导航检测 + 购买方清单管理
 
@@ -65,4 +65,4 @@ chrome.webNavigation.onCompleted.addListener((details) => {
   }
 }, { url: [{ hostSuffix: 'utscchina.com' }] });
 
-console.log('[发票检查] Background v3.0.34 已启动，预存购买方', SAVED_BUYERS.length, '家');
+console.log('[发票检查] Background v3.0.35 已启动，预存购买方', SAVED_BUYERS.length, '家');
