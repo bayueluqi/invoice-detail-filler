@@ -1,4 +1,4 @@
-// 发票类型检查助手 v3.0.33
+// 发票类型检查助手 v3.0.34
 // 日期: 2026-06-29  制作人: 陆琦
 // v3.0.32 改动: 修复"取消关闭后重新打开触发识别"BUG — 引入 drawOpenTime/fileCaptureTime 时间戳确保仅当前会话上传的文件才触发，增强 Drawer 关闭检测（可见性而非 DOM 移除）
 // v3.0.31 改动: 修复"取消"关闭抽屉后重新触发 doCheck — 新增 lastCompletedFile，MutationObserver type-change 路径中若文件已完成检查且 capturedFile 已清空则跳过
@@ -1366,7 +1366,7 @@ function showFloat() {
   fw.innerHTML =
     '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">' +
       '<span id="ic-svc-light" style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#888;flex-shrink:0" title="Python服务状态检测中..."></span>' +
-      '<span style="font-weight:600;margin-right:4px">发票检查 v3.0.33</span>' +
+      '<span style="font-weight:600;margin-right:4px">发票检查 v3.0.34</span>' +
       '<span style="opacity:.7;font-size:10px">by 陆琦</span>' +
       '<span style="opacity:.7;font-size:10px;margin-left:auto">(' + (SAVED_BUYERS.length || 0) + '家)</span>' +
     '</div>' +
@@ -1385,6 +1385,10 @@ function showFloat() {
           '<span style="position:absolute;top:2px;left:' + (icToggleAmount ? '18px' : '2px') + ';width:12px;height:12px;border-radius:50%;background:' + (icToggleAmount ? '#67c23a' : '#aaa') + ';transition:left .25s,background .25s"></span>' +
         '</span>' +
       '</label>' +
+    '</div>' +
+    '<div style="display:flex;align-items:center;margin-top:6px;font-size:11px">' +
+      '<span id="ic-restart-btn" style="cursor:pointer;background:rgba(255,255,255,0.2);padding:3px 12px;border-radius:4px;display:inline-block;transition:background .2s,opacity .2s;user-select:none">' +
+        '🔄 重启服务</span>' +
     '</div>';
 
   document.body.appendChild(fw);
@@ -1408,6 +1412,18 @@ function showFloat() {
   _floatUpHandler = () => { dragging = false; };
   document.addEventListener('mousemove', _floatMoveHandler);
   document.addEventListener('mouseup', _floatUpHandler);
+
+  // v3.0.34: 一键重启服务按钮
+  const restartBtn = fw.querySelector('#ic-restart-btn');
+  if (restartBtn) {
+    restartBtn.onmouseover = () => { restartBtn.style.background = 'rgba(255,255,255,0.35)'; };
+    restartBtn.onmouseout = () => { restartBtn.style.background = 'rgba(255,255,255,0.2)'; };
+    restartBtn.onclick = (e) => {
+      e.stopPropagation();
+      restartService(restartBtn, fw.querySelector('#ic-svc-light'));
+    };
+  }
+
   updateServiceLight(fw.querySelector('#ic-svc-light'));
 }
 
@@ -1444,6 +1460,93 @@ async function updateServiceLight(lightEl) {
     lightEl.style.background = '#ff3b30'; // 红色 - 未启动
     lightEl.title = 'Python 服务未启动! 请双击 "发票识别助手启动.bat"';
   }
+}
+
+// v3.0.34: 一键重启服务 — 检测health，若未启动则复制启动bat路径到剪贴板并引导用户手动启动
+async function restartService(btnEl, lightEl) {
+  // 按钮进入检测状态
+  const origText = btnEl.textContent;
+  btnEl.textContent = '⏳ 检测中...';
+  btnEl.style.pointerEvents = 'none';
+  btnEl.style.opacity = '0.7';
+  btnEl.style.cursor = 'default';
+
+  try {
+    const controller = new AbortController();
+    setTimeout(() => controller.abort(), 3000);
+    const resp = await fetch('http://127.0.0.1:52100/health', { signal: controller.signal });
+
+    if (resp.ok) {
+      // ✅ 服务已在运行
+      btnEl.textContent = '✅ 服务正常';
+      btnEl.style.background = 'rgba(103,194,58,0.35)';
+      if (lightEl) { lightEl.style.background = '#4cd964'; lightEl.title = 'Python 服务正常'; }
+    }
+  } catch (e) {
+    // ❌ 服务未启动 — 复制启动bat路径到剪贴板
+    btnEl.textContent = '❌ 服务未启动';
+    btnEl.style.background = 'rgba(245,108,108,0.35)';
+    if (lightEl) { lightEl.style.background = '#ff3b30'; lightEl.title = '服务未启动'; }
+
+    // 复制启动bat路径，方便用户直接粘贴到运行窗口执行
+    const batPath = 'C:\\Users\\UTLQ\\AppData\\Local\\InvoiceChecker\\发票识别助手启动.bat';
+    try {
+      await navigator.clipboard.writeText(batPath);
+      showRestartTip(batPath, true); // 复制成功
+    } catch (clipErr) {
+      showRestartTip(batPath, false); // 复制失败，但仍显示路径
+    }
+  }
+
+  // 3秒后恢复按钮原始状态
+  setTimeout(() => {
+    btnEl.textContent = origText;
+    btnEl.style.background = 'rgba(255,255,255,0.2)';
+    btnEl.style.pointerEvents = 'auto';
+    btnEl.style.opacity = '1';
+    btnEl.style.cursor = 'pointer';
+    // 刷新灯光状态
+    if (lightEl) updateServiceLight(lightEl);
+  }, 3500);
+}
+
+// v3.0.34: 显示重启引导提示弹窗
+function showRestartTip(batPath, copied) {
+  // 移除已有的提示
+  const old = document.getElementById('ic-restart-tip');
+  if (old) old.remove();
+
+  const tip = document.createElement('div');
+  tip.id = 'ic-restart-tip';
+  tip.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:2147483647;'
+    + 'background:#1a1a2e;color:#e0e0e0;padding:20px 24px;border-radius:12px;'
+    + 'font-size:13px;box-shadow:0 8px 32px rgba(0,0,0,.4);'
+    + 'font-family:"Microsoft YaHei",sans-serif;line-height:1.6;min-width:360px;text-align:center';
+
+  tip.innerHTML =
+    '<div style="font-size:16px;font-weight:600;margin-bottom:12px;color:#ff6b6b">⚠️ Python 服务未启动</div>'
+    + '<div style="margin-bottom:8px;opacity:.8">请按以下步骤启动服务：</div>'
+    + '<div style="background:#0d0d1a;padding:8px 12px;border-radius:6px;margin-bottom:12px;'
+    +  'font-family:Consolas,monospace;font-size:11px;word-break:break-all;color:#a8d8ff">'
+    + batPath.replace(/\\/g, '\\') + '</div>'
+    + '<div style="margin-bottom:12px;opacity:.8">'
+    +   '1️⃣ <b>Win+R</b> 打开运行 → <b>Ctrl+V</b> 粘贴 → <b>回车</b><br>'
+    +   '2️⃣ 或在文件管理器中定位到该路径双击运行'
+    + '</div>'
+    + '<div style="font-size:12px;color:#4cd964;margin-bottom:12px">'
+    +   (copied ? '✅ 路径已复制到剪贴板' : '⚠️ 复制失败，请手动复制上方路径')
+    + '</div>'
+    + '<button id="ic-restart-tip-close" style="background:rgba(255,255,255,.15);color:#fff;border:none;'
+    +  'padding:6px 20px;border-radius:6px;cursor:pointer;font-size:12px;transition:background .2s"'
+    +  'onmouseover="this.style.background=\'rgba(255,255,255,.25)\'" '
+    +  'onmouseout="this.style.background=\'rgba(255,255,255,.15)\'">关闭</button>';
+
+  document.body.appendChild(tip);
+
+  // 点击关闭按钮
+  tip.querySelector('#ic-restart-tip-close').onclick = () => tip.remove();
+  // 8秒后自动消失
+  setTimeout(() => { if (document.getElementById('ic-restart-tip')) tip.remove(); }, 8000);
 }
 
 // v2.5.14-fix: 移除拖拽监听器（deactivate 时调用）
@@ -2596,4 +2699,4 @@ if (isInvoicePage()) {
   console.log('[发票检查] 当前页面非发票录入，等待导航触发');
 }
 
-console.log('[发票检查 v3.0.33] Content script已加载（时间戳保护防Drawer重开误触发 + lastCompletedFile防取消重触发 + isInvoiceDrawer白名单 + 发票号手工校验 + 浮窗双开关）');
+console.log('[发票检查 v3.0.34] Content script已加载（时间戳保护防Drawer重开误触发 + lastCompletedFile防取消重触发 + isInvoiceDrawer白名单 + 发票号手工校验 + 浮窗双开关 + 一键重启服务）');
