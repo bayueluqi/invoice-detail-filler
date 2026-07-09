@@ -1,6 +1,6 @@
 """
 ==========================================
-版本：v3.0.35（2026-07-06）
+版本：v3.0.36（2026-07-09）
 相对 v3.0.13 改动：
   1) ★ 修复"文本优先"逻辑反杀：AI与PDF文本都返回有效长度但数字不同时，优先信AI（AI视觉能区分发票号/保单号位置）
      旧逻辑无条件用PDF覆盖AI → 当PDF同时存在发票号+保单号两个20位数字时，文本提取可能抓保单号覆盖AI正确结果
@@ -29,7 +29,7 @@ API_URL = "https://open.bigmodel.cn/api/paas/v4/chat/completions"
 MODEL = "glm-4v-flash"
 PORT = 52100
 # v2.5.12-fix: 版本号统一为常量，避免升级时各接口版本号漏改不一致
-VERSION = "3.0.35"
+VERSION = "3.0.36"
 
 # ========== 日志系统：文件日志为主，控制台日志为辅（pythonw.exe 无控制台，全靠文件日志） ==========
 LOG_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -1161,6 +1161,9 @@ class Handler(BaseHTTPRequestHandler):
                 self._handle_check_invoice()
             elif self.path == '/extract-detail':
                 self._handle_extract_detail()
+            elif self.path == '/verify':
+                # v3.0.36: 提交再检查 — 对比模式（AI识别值 vs 用户填写值）
+                self._handle_verify()
             elif self.path == '/weather':
                 self._handle_weather()
             else:
@@ -1230,6 +1233,66 @@ class Handler(BaseHTTPRequestHandler):
             self._json(result)
         except Exception as e:
             log.error(f"[错误] /weather: {e}\n{traceback.format_exc()}")
+            self._json({'error': str(e)}, 500)
+
+    def _handle_verify(self):
+        """v3.0.36: 提交再检查 — 对比校验模式
+        接收用户填写的表单数据 + 附件文件，用AI重新识别发票，
+        返回所有识别结果供前端对比生成报告。
+        """
+        try:
+            length = int(self.headers.get('Content-Length', 0))
+            data = json.loads(self.rfile.read(length))
+            fd = data.get('file_data')
+            fn = data.get('file_name', 'unknown')
+            form_data = data.get('form_data', {})  # 用户填写的数据
+            mode = data.get('mode', 'compare')
+
+            if not fd:
+                self._json({'error': '缺少文件数据'}, 400)
+                return
+
+            log.info(f"[请求] /verify 文件={fn} mode={mode} 表单数据={json.dumps(form_data, ensure_ascii=False)}")
+
+            # 步骤1: 调用 AI 发票类型识别（获取发票号、购买方、销售方等）
+            detected_type, ai_raw, invoice_number, title, buyer = check_ai(fd, fn)
+
+            # 步骤2: 调用金额提取（获取金额、税率、税额）
+            detail_result = extract_detail(fd, fn, detected_type)
+
+            # 步骤3: 尝试从 AI 原始响应中提取销售方（如果有的话）
+            seller = ''
+            try:
+                # AI 返回的原始文本中可能包含销售方信息
+                if ai_raw and isinstance(ai_raw, str):
+                    # 常见格式："销售方：xxx" 或 "卖方名称：xxx"
+                    seller_match = re.search(r'(?:销售方|卖方名称|销货单位)[：:]\s*(.+?)(?:\n|$|购买方|买方)', ai_raw)
+                    if seller_match:
+                        seller = seller_match.group(1).strip()
+            except Exception:
+                pass
+
+            result = {
+                'detected_type': detected_type,
+                'invoice_number': invoice_number,
+                'invoice_buyer': buyer,
+                'invoice_seller': seller,
+                'invoice_title': title,
+                # 明细数据
+                'amount': detail_result.get('amount', ''),
+                'tax_rate': detail_result.get('tax_rate', ''),
+                'tax_amount': detail_result.get('tax_amount', ''),
+                'is_multi_rate': detail_result.get('is_multi_rate', False),
+                'amount_source': detail_result.get('source', ''),
+                # 原始表单数据（回传供前端对比使用）
+                'form_data_received': form_data,
+                'ai_raw': ai_raw[:2000] if ai_raw else ''  # 截断避免过大
+            }
+
+            log.info(f"[结果] /verify 类型={detected_type} 号={invoice_number} 购买方={buyer} 销售方={seller} 金额={detail_result.get('amount')}")
+            self._json(result)
+        except Exception as e:
+            log.error(f"[错误] /verify: {e}\n{traceback.format_exc()}")
             self._json({'error': str(e)}, 500)
 
     def do_GET(self):
