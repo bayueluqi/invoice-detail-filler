@@ -1,9 +1,9 @@
 {
   "manifest_version": 3,
   "name": "发票类型检查助手",
-  "version": "3.0.36",
+  "version": "3.0.37",
   "description": "上传发票附件时自动检查类型 + 新增明细自动填蓝票金额/税率/税额 | 制作人: 陆琦",
-  "permissions": ["notifications", "webNavigation"],
+  "permissions": ["notifications", "webNavigation", "storage"],
   "host_permissions": [
     "https://work-web.utscchina.com/*",
     "http://127.0.0.1:52100/*"

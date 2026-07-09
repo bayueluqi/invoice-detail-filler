@@ -1,4 +1,4 @@
-// 发票类型检查助手 v3.0.36
+// 发票类型检查助手 v3.0.37
 // 日期: 2026-06-29  制作人: 陆琦
 // v3.0.32 改动: 修复"取消关闭后重新打开触发识别"BUG — 引入 drawOpenTime/fileCaptureTime 时间戳确保仅当前会话上传的文件才触发，增强 Drawer 关闭检测（可见性而非 DOM 移除）
 // v3.0.31 改动: 修复"取消"关闭抽屉后重新触发 doCheck — 新增 lastCompletedFile，MutationObserver type-change 路径中若文件已完成检查且 capturedFile 已清空则跳过
@@ -807,7 +807,7 @@ function captureFile(file) {
     // v3.0.36: 提交再检查模式下，仅缓存文件不触发即时识别
     // 用户填写完表单点确定后，由 hookConfirmButton 统一发送校验请求
     if (icToggleVerify) {
-      console.log('[发票检查 v3.0.36] 提交再检查模式：文件已缓存，等待用户点击【确定】后校验');
+      console.log('[发票检查 v3.0.37] 提交再检查模式：文件已缓存，等待用户点击【确定】后校验');
       return;
     }
     doCheck();
@@ -1382,7 +1382,7 @@ function showFloat() {
   fw.innerHTML =
     '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">' +
       '<span id="ic-svc-light" style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#888;flex-shrink:0" title="Python服务状态检测中..."></span>' +
-      '<span style="font-weight:600;margin-right:4px">发票检查 v3.0.36</span>' +
+      '<span style="font-weight:600;margin-right:4px">发票检查 v3.0.37</span>' +
       '<span style="opacity:.7;font-size:10px">by 陆琦</span>' +
       // v3.0.34: 一键重启服务图标按钮 — 放在"陆琦"后面，仅刷新图标无文字，title提示功能
       '<span id="ic-restart-btn" style="cursor:pointer;opacity:.6;font-size:12px;transition:opacity .2s,transform .2s;user-select:none" title="重启Python服务">🔄</span>' +
@@ -1438,10 +1438,10 @@ function showFloat() {
     // 切换开关后，安装或卸载确定按钮拦截器
     if (icToggleVerify) {
       hookConfirmButton(); // 安装拦截：监听确定按钮，收集表单数据发送校验
-      console.log('[发票检查 v3.0.36] 提交再检查模式已开启：即时识别已停止，将监听【确定】按钮');
+      console.log('[发票检查 v3.0.37] 提交再检查模式已开启：即时识别已停止，将监听【确定】按钮');
     } else {
       unhookConfirmButton(); // 卸载拦截：恢复即时识别模式
-      console.log('[发票检查 v3.0.36] 提交再检查模式已关闭：恢复即时识别');
+      console.log('[发票检查 v3.0.37] 提交再检查模式已关闭：恢复即时识别');
     }
   };
   // v3.0.36: 校验报告下载按钮 — 点击弹出预览窗口（复制+下载）
@@ -1475,6 +1475,9 @@ function showFloat() {
   }
 
   updateServiceLight(fw.querySelector('#ic-svc-light'));
+
+  // v3.0.37: 浮标初始化时恢复历史校验报告（防弹窗关闭/刷新丢失）
+  loadVerifyReportsFromStorage();
 }
 
 // v3.0.28: 开关 UI 更新函数
@@ -1641,13 +1644,13 @@ function hookConfirmButton() {
           if (btn.dataset.icHooked === 'true') continue; // 防止重复绑定
 
           btn.dataset.icHooked = 'true';
-          console.log('[发票检查 v3.0.36] 已拦截【确定】按钮');
+          console.log('[发票检查 v3.0.37] 已拦截【确定】按钮');
 
           // 使用事件捕获阶段，在原 click 之前执行校验提交
           btn.addEventListener('click', function onConfirmClick(e) {
             if (!icToggleVerify || !lastCapturedFile) return;
 
-            console.log('[发票检查 v3.0.36] 【确定】被点击，开始收集表单数据并提交校验');
+            console.log('[发票检查 v3.0.37] 【确定】被点击，开始收集表单数据并提交校验');
             e.stopPropagation();
 
             // 收集表单当前填写的数据
@@ -1674,7 +1677,7 @@ function unhookConfirmButton() {
     confirmBtnHandler._observer.disconnect();
     confirmBtnHandler._observer = null;
     confirmBtnHandler = null;
-    console.log('[发票检查 v3.0.36] 已卸载【确定】按钮拦截器');
+    console.log('[发票检查 v3.0.37] 已卸载【确定】按钮拦截器');
   }
   // 移除所有已标记的 hook
   document.querySelectorAll('[data-ic-hooked="true"]').forEach(btn => {
@@ -1726,7 +1729,7 @@ function collectFormData() {
     }
   }
 
-  console.log('[发票检查 v3.0.36] 收集到表单数据:', JSON.stringify(result));
+  console.log('[发票检查 v3.0.37] 收集到表单数据:', JSON.stringify(result));
   return result;
 }
 
@@ -1751,10 +1754,11 @@ async function submitVerifyTask(fileName, fileData, formData) {
   updateVerifyProgressUI();
 
   try {
-    // 调用 Python 新增的 /verify 接口（对比模式）
+    // v3.0.37: 加 keepalive 确保【确定】关闭弹窗/页面卸载时请求仍能送达 Python（不被浏览器取消）
     const resp = await fetch(PS.replace('/check-invoice', '/verify'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
+      keepalive: true,
       body: JSON.stringify({
         file_data: fileData,
         file_name: fileName,
@@ -1775,14 +1779,16 @@ async function submitVerifyTask(fileName, fileData, formData) {
     // 存储报告文本（合并多份报告）
     const reportText = formatVerifyReport(taskId, fileName, formData, result);
     verifyReports[taskId] = { text: reportText, timestamp: Date.now(), data: result };
+    // v3.0.37: 持久化到本地，防止弹窗关闭/页面刷新后报告丢失（跨页面可恢复）
+    saveVerifyReportsToStorage();
 
-    console.log('[发票检查 v3.0.36] 校验完成:', taskId, result.error ? result.error : 'OK');
+    console.log('[发票检查 v3.0.37] 校验完成:', taskId, result.error ? result.error : 'OK');
 
     // 更新 UI
     updateVerifyProgressUI();
     showNotify('校验完成', `「${fileName}」已校验完毕`);
   } catch (err) {
-    console.error('[发票检查 v3.0.36] 校验请求失败:', err);
+    console.error('[发票检查 v3.0.37] 校验请求失败:', err);
     const task = verifyQueue.find(t => t.id === taskId);
     if (task) task.status = 'error';
     verifyingCount--;
@@ -1918,6 +1924,42 @@ function updateVerifyProgressUI() {
   // 有报告时显示下载按钮
   if (reportBtn) {
     reportBtn.style.display = Object.keys(verifyReports).length > 0 ? '' : 'none';
+  }
+}
+
+/**
+ * 持久化校验报告到 chrome.storage.local
+ * v3.0.37: 防止弹窗关闭/页面刷新后报告丢失（跨页面/重开浏览器可恢复）
+ * 依赖 manifest.json 的 "storage" 权限
+ */
+function saveVerifyReportsToStorage() {
+  try {
+    if (typeof chrome === 'undefined' || !chrome.storage || !chrome.storage.local) return;
+    // 直接存全量对象，结构同内存中的 verifyReports = {taskId: {text, timestamp, data}}
+    chrome.storage.local.set({ ic_verify_reports: verifyReports });
+  } catch (e) {
+    console.error('[发票检查 v3.0.37] 报告持久化失败:', e);
+  }
+}
+
+/**
+ * 从 chrome.storage.local 恢复历史校验报告
+ * v3.0.37: 浮标初始化时调用，确保刷新/重开页面后📋报告按钮不丢
+ * 合并策略：内存中最新报告优先，storage 中的历史报告补充
+ */
+function loadVerifyReportsFromStorage() {
+  try {
+    if (typeof chrome === 'undefined' || !chrome.storage || !chrome.storage.local) return;
+    chrome.storage.local.get(['ic_verify_reports'], (res) => {
+      const saved = res.ic_verify_reports;
+      if (saved && typeof saved === 'object' && Object.keys(saved).length > 0) {
+        verifyReports = Object.assign({}, saved, verifyReports);
+        updateVerifyProgressUI(); // 恢复📋按钮和进度显示
+        console.log('[发票检查 v3.0.37] 已从本地恢复', Object.keys(verifyReports).length, '份历史报告');
+      }
+    });
+  } catch (e) {
+    console.error('[发票检查 v3.0.37] 报告恢复失败:', e);
   }
 }
 
@@ -3166,4 +3208,4 @@ if (isInvoicePage()) {
   console.log('[发票检查] 当前页面非发票录入，等待导航触发');
 }
 
-console.log('[发票检查 v3.0.36] Content script已加载（时间戳保护防Drawer重开误触发 + lastCompletedFile防取消重触发 + isInvoiceDrawer白名单 + 发票号手工校验 + 浮窗三开关 + 一键重启服务图标 + 提交再检查）');
+console.log('[发票检查 v3.0.37] Content script已加载（时间戳保护防Drawer重开误触发 + lastCompletedFile防取消重触发 + isInvoiceDrawer白名单 + 发票号手工校验 + 浮窗三开关 + 一键重启服务图标 + 提交再检查 + 弹窗关闭报告持久化keepalive/storage）');
