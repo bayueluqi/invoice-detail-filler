@@ -1,4 +1,4 @@
-// 发票检查助手 v3.0.37 - background
+// 发票检查助手 v3.0.38 - background
 // 日期: 2026-06-29  制作人: 陆琦
 // 负责：弹系统通知 + SPA导航检测 + 购买方清单管理
 
@@ -65,4 +65,35 @@ chrome.webNavigation.onCompleted.addListener((details) => {
   }
 }, { url: [{ hostSuffix: 'utscchina.com' }] });
 
-console.log('[发票检查] Background v3.0.37 已启动，预存购买方', SAVED_BUYERS.length, '家');
+console.log('[发票检查] Background v3.0.38 已启动，预存购买方', SAVED_BUYERS.length, '家');
+
+// v3.0.38: 扩展重新加载（用户点"刷新"扩展）时，Chrome 会销毁所有已打开标签页上的旧 content script，
+// 但不会自动重新注入。这会导致用户刷新扩展后浮标消失（必须手动刷新页面才行）。
+// 这里监听 onInstalled，在扩展重新加载后自动把 content.js 重新注入到已打开的 utscchina.com 标签页，
+// 这样用户只需刷新扩展即可，无需再手动刷新页面。
+chrome.runtime.onInstalled.addListener((details) => {
+  console.log('[发票检查] 扩展已重新加载 (reason=' + details.reason + ')，自动重新注入 content script 到已打开的标签页');
+  try {
+    // 查询所有已打开的 OA 标签页（整个域名都匹配，content script 会在 isInvoicePage() 里自行判断是否激活）
+    chrome.tabs.query({ url: 'https://work-web.utscchina.com/*' }, (tabs) => {
+      if (!tabs || tabs.length === 0) {
+        console.log('[发票检查] 没有找到已打开的 OA 标签页，跳过自动注入');
+        return;
+      }
+      tabs.forEach((tab) => {
+        // 重新执行 content.js（文件方式注入，Chrome 会重新运行脚本顶层代码）
+        // 若页面已存在旧浮标，showFloat() 内的 getElementById 守卫会跳过重复创建
+        chrome.scripting.executeScript({
+          target: { tabId: tab.id },
+          files: ['content.js']
+        }).then(() => {
+          console.log('[发票检查] 已重新注入 content script 到标签页', tab.id, tab.url);
+        }).catch((err) => {
+          console.log('[发票检查] 注入标签页', tab.id, '失败:', err && err.message ? err.message : err);
+        });
+      });
+    });
+  } catch (e) {
+    console.error('[发票检查] 自动注入异常:', e);
+  }
+});
