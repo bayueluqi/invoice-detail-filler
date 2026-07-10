@@ -1,4 +1,4 @@
-// 发票类型检查助手 v3.0.41
+// 发票类型检查助手 v3.0.42
 // 日期: 2026-06-29  制作人: 陆琦
 // v3.0.32 改动: 修复"取消关闭后重新打开触发识别"BUG — 引入 drawOpenTime/fileCaptureTime 时间戳确保仅当前会话上传的文件才触发，增强 Drawer 关闭检测（可见性而非 DOM 移除）
 // v3.0.31 改动: 修复"取消"关闭抽屉后重新触发 doCheck — 新增 lastCompletedFile，MutationObserver type-change 路径中若文件已完成检查且 capturedFile 已清空则跳过
@@ -807,7 +807,7 @@ function captureFile(file) {
     // v3.0.36: 提交再检查模式下，仅缓存文件不触发即时识别
     // 用户填写完表单点确定后，由 hookConfirmButton 统一发送校验请求
     if (icToggleVerify) {
-      console.log('[发票检查 v3.0.41] 提交再检查模式：文件已缓存，等待用户点击【确定】后校验');
+      console.log('[发票检查 v3.0.42] 提交再检查模式：文件已缓存，等待用户点击【确定】后校验');
       return;
     }
     doCheck();
@@ -948,12 +948,12 @@ function blockSubmit() {
 // ====== 4. AI检查 ======
 function doCheck() {
   if (!capturedFile) return;
-  // v3.0.41: 【统一守卫】提交再查模式下，无论从哪条路径进入(doCheck被4处调用)，全部拦截
+  // v3.0.42: 【统一守卫】提交再查模式下，无论从哪条路径进入(doCheck被4处调用)，全部拦截
   // 原因: captureFile(813行)有守卫但 MutationObserver(611行)、pollTypeChange(765/771行) 没有
   //       导致开了提交再查后，上传附件虽然首次不触发，但后续DOM变化/类型选择仍会绕过触发
   // 修复: 在 doCheck 唯一入口处统一拦截，文件已在 lastCapturedFile 缓存，等用户点确定后校验
   if (icToggleVerify) {
-    console.log('[发票检查 v3.0.41] doCheck 已拦截：提交再查模式开启中，即时识别暂停（文件已缓存，等点【确定】后校验）');
+    console.log('[发票检查 v3.0.42] doCheck 已拦截：提交再查模式开启中，即时识别暂停（文件已缓存，等点【确定】后校验）');
     return;
   }
   // v3.0.13: 防止短时间内重复调用（MutationObserver/onClickRadio 二次触发）
@@ -1390,7 +1390,7 @@ function showFloat() {
   fw.innerHTML =
     '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">' +
       '<span id="ic-svc-light" style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#888;flex-shrink:0" title="Python服务状态检测中..."></span>' +
-      '<span style="font-weight:600;margin-right:4px">发票检查 v3.0.41</span>' +
+      '<span style="font-weight:600;margin-right:4px">发票检查 v3.0.42</span>' +
       '<span style="opacity:.7;font-size:10px">by 陆琦</span>' +
       // v3.0.34: 一键重启服务图标按钮 — 放在"陆琦"后面，仅刷新图标无文字，title提示功能
       '<span id="ic-restart-btn" style="cursor:pointer;opacity:.6;font-size:12px;transition:opacity .2s,transform .2s;user-select:none" title="重启Python服务">🔄</span>' +
@@ -1427,7 +1427,7 @@ function showFloat() {
   document.body.appendChild(fw);
 
   // 开关1 点击事件
-  // v3.0.41: 互斥逻辑 — "提交再查"与即时识别两个开关互斥（同一时间只能选一种模式）
+  // v3.0.42: 互斥逻辑 — "提交再查"与即时识别两个开关互斥（同一时间只能选一种模式）
   // 开启左边任意一个即时识别开关时，自动关闭"提交再查"；反之亦然
   fw.querySelector('#ic-toggle-buyer-label').onclick = (e) => {
     e.stopPropagation();
@@ -1459,19 +1459,19 @@ function showFloat() {
       icToggleBuyer = false;
       icToggleAmount = false;
       hookConfirmButton(); // 安装拦截：监听确定按钮，收集表单数据发送校验
-      console.log('[发票检查 v3.0.41] 提交再查已开启 → 即时识别(发票号&购买方、金额&税率)已自动关闭');
+      console.log('[发票检查 v3.0.42] 提交再查已开启 → 即时识别(发票号&购买方、金额&税率)已自动关闭');
     } else {
       unhookConfirmButton(); // 卸载拦截：恢复即时识别模式
-      console.log('[发票检查 v3.0.41] 提交再查已关闭 → 恢复即时识别');
+      console.log('[发票检查 v3.0.42] 提交再查已关闭 → 恢复即时识别');
     }
     updateToggleUI(fw);
     // 切换开关后，安装或卸载确定按钮拦截器
     if (icToggleVerify) {
       hookConfirmButton(); // 安装拦截：监听确定按钮，收集表单数据发送校验
-      console.log('[发票检查 v3.0.41] 提交再检查模式已开启：即时识别已停止，将监听【确定】按钮');
+      console.log('[发票检查 v3.0.42] 提交再检查模式已开启：即时识别已停止，将监听【确定】按钮');
     } else {
       unhookConfirmButton(); // 卸载拦截：恢复即时识别模式
-      console.log('[发票检查 v3.0.41] 提交再检查模式已关闭：恢复即时识别');
+      console.log('[发票检查 v3.0.42] 提交再检查模式已关闭：恢复即时识别');
     }
   };
   // v3.0.36: 校验报告下载按钮 — 点击弹出预览窗口（复制+下载）
@@ -1654,57 +1654,63 @@ let confirmBtnOriginalClick = null;
 
 /**
  * 安装确定按钮点击拦截器
- * 原理：用 MutationObserver 监听 Drawer 内的 .el-button--primary 确定按钮出现，
+ * 原理：
+ *   1. 先立即扫描 DOM 中已存在的【确定】按钮（处理 Drawer 已打开后再开提交再查的竞态条件）
+ *   2. 再用 MutationObserver 监听后续新出现的【确定】按钮（处理先开开关后打开 Drawer 的场景）
  *       在其 click 事件前注入我们的校验逻辑（不阻止原操作）
  */
 function hookConfirmButton() {
   if (confirmBtnHandler) return; // 防止重复安装
 
+  // 核心绑定逻辑：给匹配的【确定】按钮添加捕获阶段 click 监听
+  function bindConfirmBtn(btn) {
+    if (btn.dataset.icHooked === 'true') return; // 防止重复绑定
+    btn.dataset.icHooked = 'true';
+    console.log('[发票检查] 已拦截【确定】按钮');
+
+    btn.addEventListener('click', function onConfirmClick(e) {
+      // 条件检查 — 不满足时放行原始操作
+      if (!icToggleVerify) return;
+      if (!lastCapturedFile) {
+        showNotify('发票检查助手', '⚠️ 提交再查模式：请先上传发票附件');
+        return;
+      }
+
+      console.log('[发票检查] 【确定】被点击，开始收集表单数据并提交校验');
+      // v3.0.42: 不再调用 e.stopPropagation()，让 Element UI 原始保存 handler 正常执行
+      // 校验任务异步执行，不阻塞也不干扰原有保存流程
+
+      const formData = collectFormData();
+      submitVerifyTask(lastCapturedFile.fileName, lastCapturedFile.fileData, formData);
+    }, true); // capture phase — 确保在 Element UI 原生 handler 之前执行我们的逻辑
+  }
+
+  // 步骤1：立即扫描 DOM（v3.0.42 修复竞态条件）
+  // 场景：用户先打开 Drawer（【确定】按钮已渲染），然后再开【提交再查】开关
+  // 此时 MutationObserver 只能监听后续变化，已存在的按钮需要主动查询绑定
+  const existingBtns = document.querySelectorAll('.el-drawer .el-button--primary.el-button--small');
+  existingBtns.forEach(btn => {
+    if ((btn.textContent || '').trim() === '确定') bindConfirmBtn(btn);
+  });
+  if (existingBtns.length > 0) {
+    console.log('[发票检查] hookConfirmButton: 扫描到', existingBtns.length, '个主按钮，已尝试绑定【确定】');
+  }
+
+  // 步骤2：MutationObserver 监听后续 DOM 变化（先开开关后打开 Drawer 的场景）
   confirmBtnHandler = (mutations) => {
     for (const mut of mutations) {
       for (const node of mut.addedNodes) {
         if (!node.querySelectorAll) continue;
-        // 查找 Drawer 内的主按钮（确定）— 用 class 组合定位，避免误匹配其他按钮
         const btns = node.querySelectorAll
           ? node.querySelectorAll('.el-drawer .el-button--primary.el-button--small')
           : [];
         for (const btn of btns) {
-          const text = (btn.textContent || '').trim();
-          if (text !== '确定') continue;
-          if (btn.dataset.icHooked === 'true') continue; // 防止重复绑定
-
-          btn.dataset.icHooked = 'true';
-          console.log('[发票检查 v3.0.41] 已拦截【确定】按钮');
-
-          // 使用事件捕获阶段，在原 click 之前执行校验提交
-          btn.addEventListener('click', function onConfirmClick(e) {
-            // v3.0.41: 条件检查 — 不满足时给明确提示（不再静默 return）
-            if (!icToggleVerify) {
-              console.log('[发票检查 v3.0.41] 【确定】被点击但"提交再查"未开启，跳过校验');
-              // 仅日志记录，不打扰用户正常操作（未开启模式时不应该弹提示）
-              return; // 未开启提交再查 → 放行原始操作
-            }
-            if (!lastCapturedFile) {
-              console.log('[发票检查 v3.0.41] 【确定】被点击但没有已缓存的发票文件，跳过校验');
-              // v3.0.41: 开启了提交再查但没上传文件 → 提醒用户
-              showNotify('发票检查助手', '⚠️ 提交再查模式：请先上传发票附件');
-              return;
-            }
-
-            console.log('[发票检查 v3.0.41] 【确定】被点击，开始收集表单数据并提交校验');
-            e.stopPropagation();
-
-            // 收集表单当前填写的数据
-            const formData = collectFormData();
-            // 提交后台校验（不阻塞用户操作，异步排队执行）
-            submitVerifyTask(lastCapturedFile.fileName, lastCapturedFile.fileData, formData);
-          }, true); // capture phase — 确保在 Element UI 的原生 handler 之前执行
+          if ((btn.textContent || '').trim() === '确定') bindConfirmBtn(btn);
         }
       }
     }
   };
 
-  // 启动 MutationObserver 监听 DOM 变化（Drawer 打开时按钮才出现）
   const observer = new MutationObserver(confirmBtnHandler);
   observer.observe(document.body, { childList: true, subtree: true });
   confirmBtnHandler._observer = observer;
@@ -1718,7 +1724,7 @@ function unhookConfirmButton() {
     confirmBtnHandler._observer.disconnect();
     confirmBtnHandler._observer = null;
     confirmBtnHandler = null;
-    console.log('[发票检查 v3.0.41] 已卸载【确定】按钮拦截器');
+    console.log('[发票检查 v3.0.42] 已卸载【确定】按钮拦截器');
   }
   // 移除所有已标记的 hook
   document.querySelectorAll('[data-ic-hooked="true"]').forEach(btn => {
@@ -1770,7 +1776,7 @@ function collectFormData() {
     }
   }
 
-  console.log('[发票检查 v3.0.41] 收集到表单数据:', JSON.stringify(result));
+  console.log('[发票检查 v3.0.42] 收集到表单数据:', JSON.stringify(result));
   return result;
 }
 
@@ -1823,13 +1829,13 @@ async function submitVerifyTask(fileName, fileData, formData) {
     // v3.0.37: 持久化到本地，防止弹窗关闭/页面刷新后报告丢失（跨页面可恢复）
     saveVerifyReportsToStorage();
 
-    console.log('[发票检查 v3.0.41] 校验完成:', taskId, result.error ? result.error : 'OK');
+    console.log('[发票检查 v3.0.42] 校验完成:', taskId, result.error ? result.error : 'OK');
 
     // 更新 UI
     updateVerifyProgressUI();
     showNotify('校验完成', `「${fileName}」已校验完毕`);
   } catch (err) {
-    console.error('[发票检查 v3.0.41] 校验请求失败:', err);
+    console.error('[发票检查 v3.0.42] 校验请求失败:', err);
     const task = verifyQueue.find(t => t.id === taskId);
     if (task) task.status = 'error';
     verifyingCount--;
@@ -1942,7 +1948,7 @@ function normalizeCompare(val1, val2) {
  * 显示正在校验数量 / 报告下载按钮
  */
 function updateVerifyProgressUI() {
-  // v3.0.41: 浮标实际 id 是 'ic-float'（创建处在1378行），之前误写成 'ic-floating-widget' 导致 getElementById 返回 null、整函数直接 return
+  // v3.0.42: 浮标实际 id 是 'ic-float'（创建处在1378行），之前误写成 'ic-floating-widget' 导致 getElementById 返回 null、整函数直接 return
   // 结果：进度显示和📋报告按钮永远不更新（subitVerifyTask 其他逻辑正常，所以后台存了、发票也看到了，但浮标上没反应）
   const fw = document.getElementById('ic-float');
   if (!fw) return;
@@ -1981,7 +1987,7 @@ function saveVerifyReportsToStorage() {
     // 直接存全量对象，结构同内存中的 verifyReports = {taskId: {text, timestamp, data}}
     chrome.storage.local.set({ ic_verify_reports: verifyReports });
   } catch (e) {
-    console.error('[发票检查 v3.0.41] 报告持久化失败:', e);
+    console.error('[发票检查 v3.0.42] 报告持久化失败:', e);
   }
 }
 
@@ -1998,11 +2004,11 @@ function loadVerifyReportsFromStorage() {
       if (saved && typeof saved === 'object' && Object.keys(saved).length > 0) {
         verifyReports = Object.assign({}, saved, verifyReports);
         updateVerifyProgressUI(); // 恢复📋按钮和进度显示
-        console.log('[发票检查 v3.0.41] 已从本地恢复', Object.keys(verifyReports).length, '份历史报告');
+        console.log('[发票检查 v3.0.42] 已从本地恢复', Object.keys(verifyReports).length, '份历史报告');
       }
     });
   } catch (e) {
-    console.error('[发票检查 v3.0.41] 报告恢复失败:', e);
+    console.error('[发票检查 v3.0.42] 报告恢复失败:', e);
   }
 }
 
@@ -3251,4 +3257,4 @@ if (isInvoicePage()) {
   console.log('[发票检查] 当前页面非发票录入，等待导航触发');
 }
 
-console.log('[发票检查 v3.0.41] Content script已加载（时间戳保护防Drawer重开误触发 + lastCompletedFile防取消重触发 + isInvoiceDrawer白名单 + 发票号手工校验 + 浮窗三开关 + 一键重启服务图标 + 提交再检查 + 弹窗关闭报告持久化keepalive/storage + 扩展重载自动注入兼容）');
+console.log('[发票检查 v3.0.42] Content script已加载（时间戳保护防Drawer重开误触发 + lastCompletedFile防取消重触发 + isInvoiceDrawer白名单 + 发票号手工校验 + 浮窗三开关 + 一键重启服务图标 + 提交再检查 + 弹窗关闭报告持久化keepalive/storage + 扩展重载自动注入兼容）');
