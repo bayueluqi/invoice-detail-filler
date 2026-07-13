@@ -1,4 +1,4 @@
-// 发票类型检查助手 v3.0.45
+// 发票类型检查助手 v3.0.46
 // 日期: 2026-06-29  制作人: 陆琦
 // v3.0.32 改动: 修复"取消关闭后重新打开触发识别"BUG — 引入 drawOpenTime/fileCaptureTime 时间戳确保仅当前会话上传的文件才触发，增强 Drawer 关闭检测（可见性而非 DOM 移除）
 // v3.0.31 改动: 修复"取消"关闭抽屉后重新触发 doCheck — 新增 lastCompletedFile，MutationObserver type-change 路径中若文件已完成检查且 capturedFile 已清空则跳过
@@ -807,7 +807,7 @@ function captureFile(file) {
     // v3.0.36: 提交再检查模式下，仅缓存文件不触发即时识别
     // 用户填写完表单点确定后，由 hookConfirmButton 统一发送校验请求
     if (icToggleVerify) {
-      console.log('[发票检查 v3.0.45] 提交再检查模式：文件已缓存，等待用户点击【确定】后校验');
+      console.log('[发票检查 v3.0.46] 提交再检查模式：文件已缓存，等待用户点击【确定】后校验');
       return;
     }
     doCheck();
@@ -948,12 +948,12 @@ function blockSubmit() {
 // ====== 4. AI检查 ======
 function doCheck() {
   if (!capturedFile) return;
-  // v3.0.45: 【统一守卫】提交再查模式下，无论从哪条路径进入(doCheck被4处调用)，全部拦截
+  // v3.0.46: 【统一守卫】提交再查模式下，无论从哪条路径进入(doCheck被4处调用)，全部拦截
   // 原因: captureFile(813行)有守卫但 MutationObserver(611行)、pollTypeChange(765/771行) 没有
   //       导致开了提交再查后，上传附件虽然首次不触发，但后续DOM变化/类型选择仍会绕过触发
   // 修复: 在 doCheck 唯一入口处统一拦截，文件已在 lastCapturedFile 缓存，等用户点确定后校验
   if (icToggleVerify) {
-    console.log('[发票检查 v3.0.45] doCheck 已拦截：提交再查模式开启中，即时识别暂停（文件已缓存，等点【确定】后校验）');
+    console.log('[发票检查 v3.0.46] doCheck 已拦截：提交再查模式开启中，即时识别暂停（文件已缓存，等点【确定】后校验）');
     return;
   }
   // v3.0.13: 防止短时间内重复调用（MutationObserver/onClickRadio 二次触发）
@@ -1390,7 +1390,7 @@ function showFloat() {
   fw.innerHTML =
     '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">' +
       '<span id="ic-svc-light" style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#888;flex-shrink:0" title="Python服务状态检测中..."></span>' +
-      '<span style="font-weight:600;margin-right:4px">发票检查 v3.0.45</span>' +
+      '<span style="font-weight:600;margin-right:4px">发票检查 v3.0.46</span>' +
       '<span style="opacity:.7;font-size:10px">by 陆琦</span>' +
       // v3.0.34: 一键重启服务图标按钮 — 放在"陆琦"后面，仅刷新图标无文字，title提示功能
       '<span id="ic-restart-btn" style="cursor:pointer;opacity:.6;font-size:12px;transition:opacity .2s,transform .2s;user-select:none" title="重启Python服务">🔄</span>' +
@@ -1427,7 +1427,7 @@ function showFloat() {
   document.body.appendChild(fw);
 
   // 开关1 点击事件
-  // v3.0.45: 互斥逻辑 — "提交再查"与即时识别两个开关互斥（同一时间只能选一种模式）
+  // v3.0.46: 互斥逻辑 — "提交再查"与即时识别两个开关互斥（同一时间只能选一种模式）
   // 开启左边任意一个即时识别开关时，自动关闭"提交再查"；反之亦然
   fw.querySelector('#ic-toggle-buyer-label').onclick = (e) => {
     e.stopPropagation();
@@ -1459,19 +1459,19 @@ function showFloat() {
       icToggleBuyer = false;
       icToggleAmount = false;
       hookConfirmButton(); // 安装拦截：监听确定按钮，收集表单数据发送校验
-      console.log('[发票检查 v3.0.45] 提交再查已开启 → 即时识别(发票号&购买方、金额&税率)已自动关闭');
+      console.log('[发票检查 v3.0.46] 提交再查已开启 → 即时识别(发票号&购买方、金额&税率)已自动关闭');
     } else {
       unhookConfirmButton(); // 卸载拦截：恢复即时识别模式
-      console.log('[发票检查 v3.0.45] 提交再查已关闭 → 恢复即时识别');
+      console.log('[发票检查 v3.0.46] 提交再查已关闭 → 恢复即时识别');
     }
     updateToggleUI(fw);
     // 切换开关后，安装或卸载确定按钮拦截器
     if (icToggleVerify) {
       hookConfirmButton(); // 安装拦截：监听确定按钮，收集表单数据发送校验
-      console.log('[发票检查 v3.0.45] 提交再检查模式已开启：即时识别已停止，将监听【确定】按钮');
+      console.log('[发票检查 v3.0.46] 提交再检查模式已开启：即时识别已停止，将监听【确定】按钮');
     } else {
       unhookConfirmButton(); // 卸载拦截：恢复即时识别模式
-      console.log('[发票检查 v3.0.45] 提交再检查模式已关闭：恢复即时识别');
+      console.log('[发票检查 v3.0.46] 提交再检查模式已关闭：恢复即时识别');
     }
   };
   // v3.0.36: 校验报告下载按钮 — 点击弹出预览窗口（复制+下载）
@@ -1659,22 +1659,24 @@ let confirmBtnOriginalClick = null;
  *   2. 再用 MutationObserver 监听后续新出现的【确定】按钮（处理先开开关后打开 Drawer 的场景）
  *       在其 click 事件前注入我们的校验逻辑（不阻止原操作）
  */
+
+// v3.0.46: isConfirmBtnText 提升为全局函数（v3.0.46 定义在 hookConfirmButton 内部，
+//   导致自动诊断快照在全局作用域调用时 ReferenceError: isConfirmBtnText is not defined）
+// 宽松匹配：去除所有空白后再比较，兼容 Element UI 按钮文字含空格/换行/零宽字符
+function isConfirmBtnText(text) {
+  return (text || '').replace(/\s+/g, '') === '确定';
+}
+
 function hookConfirmButton() {
   if (confirmBtnHandler) return; // 防止重复安装
 
-  // v3.0.45: 【关键修复】确定按钮可能在 .el-drawer 内，也可能在 .el-dialog 内
+  // v3.0.46: 【关键修复】确定按钮可能在 .el-drawer 内，也可能在 .el-dialog 内
   // 旧代码只匹配 .el-drawer，导致"录入新发票"若是 Dialog 弹窗时永远 hook 不到【确定】
   // findDetailDialog() 本身就兼容两种容器（见2399行），此处必须保持一致
   const CONFIRM_BTN_SELECTOR = '.el-drawer .el-button--primary.el-button--small, .el-dialog .el-button--primary.el-button--small';
 
-  // v3.0.45: 宽松按钮文字匹配 — 去除所有空白后再比较，兼容 Element UI 按钮文字含空格/换行/零宽字符
-  // 例如 "确 定"、" 确定 "、"确定\n" 都能匹配到
-  function isConfirmBtnText(text) {
-    return (text || '').replace(/\s+/g, '') === '确定';
-  }
-
   // 核心绑定逻辑：给匹配的【确定】按钮添加捕获阶段 click 监听
-  // v3.0.45: 文字匹配改用 includes + 去除所有空白，兼容 Element UI 按钮文字含空格/换行的情况
+  // v3.0.46: 文字匹配改用 includes + 去除所有空白，兼容 Element UI 按钮文字含空格/换行的情况
   function bindConfirmBtn(btn) {
     if (btn.dataset.icHooked === 'true') return; // 防止重复绑定
     btn.dataset.icHooked = 'true';
@@ -1696,7 +1698,7 @@ function hookConfirmButton() {
       }
 
       console.log('[发票检查] 【确定】被点击，icToggleVerify=' + icToggleVerify + '，lastCapturedFile=' + lastCapturedFile.fileName + '，开始收集表单并提交校验');
-      // v3.0.45: 不再调用 e.stopPropagation()，让 Element UI 原始保存 handler 正常执行
+      // v3.0.46: 不再调用 e.stopPropagation()，让 Element UI 原始保存 handler 正常执行
       // 校验任务异步执行，不阻塞也不干扰原有保存流程
 
       const formData = collectFormData();
@@ -1704,12 +1706,12 @@ function hookConfirmButton() {
     }, true); // capture phase — 确保在 Element UI 原生 handler 之前执行我们的逻辑
   }
 
-  // 步骤1：立即扫描 DOM（v3.0.45 修复竞态条件）
+  // 步骤1：立即扫描 DOM（v3.0.46 修复竞态条件）
   // 场景：用户先打开弹窗（【确定】按钮已渲染），然后再开【提交再查】开关
   // 此时 MutationObserver 只能监听后续变化，已存在的按钮需要主动查询绑定
   const existingBtns = document.querySelectorAll(CONFIRM_BTN_SELECTOR);
   let hookedCount = 0;
-  // v3.0.45: 诊断增强 — 打印所有匹配按钮的实际文字，排查"找到4个但0个是确定"的问题
+  // v3.0.46: 诊断增强 — 打印所有匹配按钮的实际文字，排查"找到4个但0个是确定"的问题
   const btnTexts = [];
   existingBtns.forEach(btn => {
     const text = (btn.textContent || '').trim();
@@ -1721,7 +1723,7 @@ function hookConfirmButton() {
   if (hookedCount > 0) {
     console.log('[发票检查]   其中【确定】', hookedCount, '个已绑定 ✅');
   } else {
-    // v3.0.45: 没有命中"确定"时，进一步搜索页面上所有含"确定"文字的按钮
+    // v3.0.46: 没有命中"确定"时，进一步搜索页面上所有含"确定"文字的按钮
     const allBtnsWithText = Array.from(document.querySelectorAll('button, [role="button"], .el-button'))
       .filter(b => (b.textContent || '').includes('确定'))
       .map(b => ({
@@ -1766,7 +1768,7 @@ function unhookConfirmButton() {
     confirmBtnHandler._observer.disconnect();
     confirmBtnHandler._observer = null;
     confirmBtnHandler = null;
-    console.log('[发票检查 v3.0.45] 已卸载【确定】按钮拦截器');
+    console.log('[发票检查 v3.0.46] 已卸载【确定】按钮拦截器');
   }
   // 移除所有已标记的 hook
   document.querySelectorAll('[data-ic-hooked="true"]').forEach(btn => {
@@ -1818,7 +1820,7 @@ function collectFormData() {
     }
   }
 
-  console.log('[发票检查 v3.0.45] 收集到表单数据:', JSON.stringify(result));
+  console.log('[发票检查 v3.0.46] 收集到表单数据:', JSON.stringify(result));
   return result;
 }
 
@@ -1871,13 +1873,13 @@ async function submitVerifyTask(fileName, fileData, formData) {
     // v3.0.37: 持久化到本地，防止弹窗关闭/页面刷新后报告丢失（跨页面可恢复）
     saveVerifyReportsToStorage();
 
-    console.log('[发票检查 v3.0.45] 校验完成:', taskId, result.error ? result.error : 'OK');
+    console.log('[发票检查 v3.0.46] 校验完成:', taskId, result.error ? result.error : 'OK');
 
     // 更新 UI
     updateVerifyProgressUI();
     showNotify('校验完成', `「${fileName}」已校验完毕`);
   } catch (err) {
-    console.error('[发票检查 v3.0.45] 校验请求失败:', err);
+    console.error('[发票检查 v3.0.46] 校验请求失败:', err);
     const task = verifyQueue.find(t => t.id === taskId);
     if (task) task.status = 'error';
     verifyingCount--;
@@ -1990,7 +1992,7 @@ function normalizeCompare(val1, val2) {
  * 显示正在校验数量 / 报告下载按钮
  */
 function updateVerifyProgressUI() {
-  // v3.0.45: 浮标实际 id 是 'ic-float'（创建处在1378行），之前误写成 'ic-floating-widget' 导致 getElementById 返回 null、整函数直接 return
+  // v3.0.46: 浮标实际 id 是 'ic-float'（创建处在1378行），之前误写成 'ic-floating-widget' 导致 getElementById 返回 null、整函数直接 return
   // 结果：进度显示和📋报告按钮永远不更新（subitVerifyTask 其他逻辑正常，所以后台存了、发票也看到了，但浮标上没反应）
   const fw = document.getElementById('ic-float');
   if (!fw) return;
@@ -2029,7 +2031,7 @@ function saveVerifyReportsToStorage() {
     // 直接存全量对象，结构同内存中的 verifyReports = {taskId: {text, timestamp, data}}
     chrome.storage.local.set({ ic_verify_reports: verifyReports });
   } catch (e) {
-    console.error('[发票检查 v3.0.45] 报告持久化失败:', e);
+    console.error('[发票检查 v3.0.46] 报告持久化失败:', e);
   }
 }
 
@@ -2046,11 +2048,11 @@ function loadVerifyReportsFromStorage() {
       if (saved && typeof saved === 'object' && Object.keys(saved).length > 0) {
         verifyReports = Object.assign({}, saved, verifyReports);
         updateVerifyProgressUI(); // 恢复📋按钮和进度显示
-        console.log('[发票检查 v3.0.45] 已从本地恢复', Object.keys(verifyReports).length, '份历史报告');
+        console.log('[发票检查 v3.0.46] 已从本地恢复', Object.keys(verifyReports).length, '份历史报告');
       }
     });
   } catch (e) {
-    console.error('[发票检查 v3.0.45] 报告恢复失败:', e);
+    console.error('[发票检查 v3.0.46] 报告恢复失败:', e);
   }
 }
 
@@ -3299,38 +3301,12 @@ if (isInvoicePage()) {
   console.log('[发票检查] 当前页面非发票录入，等待导航触发');
 }
 
-console.log('[发票检查 v3.0.45] Content script已加载（时间戳保护防Drawer重开误触发 + lastCompletedFile防取消重触发 + isInvoiceDrawer白名单 + 发票号手工校验 + 浮窗三开关 + 一键重启服务图标 + 提交再检查 + 弹窗关闭报告持久化keepalive/storage + 扩展重载自动注入兼容 + 联调诊断脚本注入）');
+// ====== 诊断说明（v3.0.46）======
+// content script 运行在 Chrome isolated world，与页面 JS 的 window 不互通。
+// 所有诊断信息通过 console.log 输出（DevTools 会合并两个世界的日志）。
+// 自动诊断快照在加载 2 秒后自动执行，打印浮标/开关/按钮/hook 状态。
 
-// ====== 联调诊断功能（v3.0.45 改进）======
-// Chrome content script 运行在 isolated world，window.__icDiag 挂在 content script 的 world，
-// 用户在 F12 Console 访问的是页面 world 的 window → 两边不互通！
-// 解决方案：通过 <script> 标签注入一个脚本到页面 DOM 中，让它在页面 world 里执行
-(function injectPageWorldDiag() {
-  const script = document.createElement('script');
-  script.textContent = [
-    'window.__icDiag = function() {',
-    '  var fw = document.getElementById("ic-float");',
-    '  var allBtns = Array.from(document.querySelectorAll(',
-    '    ".el-drawer .el-button--primary.el-button--small, ',
-    '    ".el-dialog .el-button--primary.el-button--small")',
-    '  ).filter(function(b){ return (b.textContent||"").trim() === "确定"; });',
-    '  return {',
-    '    "浮标存在": !!fw,',
-    '    "确定按钮总数": allBtns.length,',
-    '    "按钮容器类型": allBtns.map(function(b){',
-    '      var c = b.closest(".el-drawer, .el-dialog");',
-    '      return c ? (c.classList.contains("el-dialog") ? "el-dialog" : "el-drawer") : "无容器";',
-    '    }),',
-    '    "已hook按钮数": document.querySelectorAll(\'[data-ic-hooked="true"]\').length,',
-    '  };',
-    '};',
-    'console.log("[发票检查] __icDiag() 已就绪 — 在 Console 输入 __icDiag() 查看状态");',
-  ].join('\n');
-  // 注入到页面 head（如果存在）或 body
-  (document.head || document.documentElement).appendChild(script);
-  // 注入完立刻移除 <script> 标签（函数已留在内存中）
-  script.remove();
-})();
+console.log('[发票检查 v3.0.46] Content script已加载（时间戳保护 + 防重触发 + 白名单 + 发票号校验 + 三开关 + 重启图标 + 提交再查 + 报告持久化 + 自动注入 + 联调诊断console.log模式）');
 
 // ====== 自动诊断快照 ======
 // 在 activate 完成后延迟 2 秒自动输出当前状态（无需用户手动调用）
@@ -3355,8 +3331,8 @@ setTimeout(() => {
     } else {
       console.log('  ⚠️ 未找到任何【确定】按钮！可能：(1)Drawer/Dialog还没打开 (2)selector不匹配 (3)按钮文字不是"确定"');
     }
-    console.log('  已hook按钮总数:', document.querySelectorAll('[data-ic-hooked="true"]').length);
-    console.log('%c[提示] 如需手动复诊，在 Console 输入 __icDiag()', 'color:#888');
+    console.log('  已hook按钮总数:', document.querySelectorAll('[data-ic-hooked="true"]').').length);
+    console.log('%c[提示] 开【提交再查】开关后会输出更多诊断日志（各按钮文字、容器类型等）', 'color:#888');
   } catch(e) {
     console.error('[发票检查] 自动诊断快照出错:', e);
   }
