@@ -1,4 +1,4 @@
-// 发票检查助手 v3.0.46 - background
+// 发票检查助手 v3.0.47 - background
 // 日期: 2026-06-29  制作人: 陆琦
 // 负责：弹系统通知 + SPA导航检测 + 购买方清单管理
 
@@ -65,7 +65,7 @@ chrome.webNavigation.onCompleted.addListener((details) => {
   }
 }, { url: [{ hostSuffix: 'utscchina.com' }] });
 
-console.log('[发票检查] Background v3.0.46 已启动，预存购买方', SAVED_BUYERS.length, '家');
+console.log('[发票检查] Background v3.0.47 已启动，预存购买方', SAVED_BUYERS.length, '家');
 
 // v3.0.38: 扩展重新加载（用户点"刷新"扩展）时，Chrome 会销毁所有已打开标签页上的旧 content script，
 // 但不会自动重新注入。这会导致用户刷新扩展后浮标消失（必须手动刷新页面才行）。
